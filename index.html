@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'none'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'">
+  <title>Unix file permissions explained — chmod, octal, ls -l &amp; umask</title>
+  <meta name="description" content="An animated explainer of Unix file permissions: how the nine rwx bits become octal like 755, how to read an ls -l line, what umask does, and how to fix the SSH UNPROTECTED PRIVATE KEY FILE error. Runs offline, tracks nothing.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="canonical" href="https://sreenivas-sadhu-prabhakara.github.io/permbits-explained/">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="author" content="Sreenivas Sadhu Prabhakara">
+  <meta name="keywords" content="unix file permissions explained, chmod 755 meaning, how to read ls -l, octal permissions explained, umask 022 explained, rwx permissions, setuid setgid sticky bit explained, unprotected private key file, chmod 600 ssh key, linux file permissions tutorial">
+  <meta name="theme-color" content="#221B15" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F4EEE2" media="(prefers-color-scheme: light)">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="permbits — explained">
+  <meta property="og:title" content="Unix file permissions explained — chmod, octal, ls -l &amp; umask">
+  <meta property="og:description" content="Watch nine switches become 755, pull an ls -l line apart character by character, see umask arithmetic — then fix your SSH key with a cited command.">
+  <meta property="og:url" content="https://sreenivas-sadhu-prabhakara.github.io/permbits-explained/">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:image" content="https://sreenivas-sadhu-prabhakara.github.io/permbits-explained/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="An inverted 3×3 permission bit grid beside the words Unix permissions, explained — 755 ⇄ rwxr-xr-x">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Unix file permissions explained — chmod, octal, ls -l &amp; umask">
+  <meta name="twitter:description" content="Watch nine switches become 755, pull an ls -l line apart, see umask arithmetic — then fix your SSH key with a cited command. Offline, no tracking.">
+  <meta name="twitter:image" content="https://sreenivas-sadhu-prabhakara.github.io/permbits-explained/og-image.png">
+  <meta name="twitter:image:alt" content="An inverted 3×3 permission bit grid beside the words Unix permissions, explained — 755 ⇄ rwxr-xr-x">
+
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+
+  <!-- Structured data (data blocks; not executable script) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "permbits — explained",
+    "description": "An animated, offline explainer of classic Unix file permissions: how the nine rwx bits map to octal modes like 755, how to read an ls -l mode field, what setuid/setgid/sticky and umask do, and how the permbits chmod calculator converts between all of them. Links to the free permbits calculator.",
+    "url": "https://sreenivas-sadhu-prabhakara.github.io/permbits-explained/",
+    "applicationCategory": "EducationApplication",
+    "operatingSystem": "Any (modern web browser)",
+    "browserRequirements": "Requires a modern web browser.",
+    "isAccessibleForFree": true,
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "license": "https://opensource.org/licenses/MIT",
+    "author": { "@type": "Person", "name": "Sreenivas Sadhu Prabhakara" },
+    "softwareVersion": "0.1.0",
+    "featureList": [
+      "Animated mapping of the nine rwx switches to octal digits (755, 644, 600…)",
+      "ls -l mode field pulled apart character by character, including the type char, setgid s and the + ACL marker",
+      "The SSH UNPROTECTED PRIVATE KEY FILE error and its chmod 600 fix, animated on the bit grid",
+      "Umask arithmetic shown for files (666 & ~umask) and directories (777 & ~umask)",
+      "Explains the enforced connect-src 'none' privacy guarantee",
+      "Feature tour of and link to the permbits chmod calculator",
+      "Runs 100% offline — the page blocks every network request"
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What does chmod 755 mean?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Each octal digit is three bits: read = 4, write = 2, execute = 1. 755 is rwxr-xr-x — the owner gets 4+2+1 = 7 (read, write, execute); the group and everyone else get 4+1 = 5 (read and execute, no write). On a directory, execute means permission to enter and traverse it. 755 is the standard mode for web directories and executable scripts."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I read the permissions in ls -l?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The mode field is one type character (- file, d directory, l symlink…) followed by three rwx triads for owner, group and others. A letter means the permission is set, a dash means it isn't. An s or t in an execute slot marks setuid, setgid or the sticky bit, and a trailing + means the file also carries ACLs beyond the classic bits. So drwxr-sr-x+ is a setgid directory, mode 2755, with ACLs."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I fix the SSH error UNPROTECTED PRIVATE KEY FILE?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Run chmod 600 on the key file (chmod 400 for AWS .pem keys). OpenSSH refuses private keys that other users can read; 600 (rw-------) makes the key readable and writable by you alone, which clears the warning."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What does umask 022 do?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The umask lists the permission bits to withhold from new files. With umask 022, new files get 666 & ~022 = 644 (rw-r--r--) and new directories get 777 & ~022 = 755 (rwxr-xr-x) — group and others lose write. A stricter umask 077 keeps everything owner-only."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does this page or the permbits calculator track what I paste?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. Both pages set a Content-Security-Policy with connect-src 'none', so the browser itself blocks every network request — nothing you paste, not even an ls -l line from a production server, can leave your device. There are no external fonts, scripts, images or analytics."
+        }
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to the explainer</a>
+
+  <!-- progress rail -->
+  <div class="rail" aria-hidden="true"><span class="rail__fill" id="railFill"></span></div>
+
+  <!-- ============ HERO ============ -->
+  <header class="hero" id="top">
+    <div class="hero__inner reveal">
+      <div class="brand">
+        <svg class="brand__mark" viewBox="0 0 36 36" aria-hidden="true">
+          <rect width="36" height="36" rx="8" fill="#A83E1C"/>
+          <rect x="4" y="4" width="8" height="8" rx="2" fill="#F4EEE2"/><rect x="14" y="4" width="8" height="8" rx="2" fill="#F4EEE2"/><rect x="24" y="4" width="8" height="8" rx="2" fill="#F4EEE2"/>
+          <rect x="4" y="14" width="8" height="8" rx="2" fill="#F4EEE2"/><rect x="14" y="14" width="8" height="8" rx="2" fill="#8A3115"/><rect x="24" y="14" width="8" height="8" rx="2" fill="#F4EEE2"/>
+          <rect x="4" y="24" width="8" height="8" rx="2" fill="#F4EEE2"/><rect x="14" y="24" width="8" height="8" rx="2" fill="#8A3115"/><rect x="24" y="24" width="8" height="8" rx="2" fill="#F4EEE2"/>
+        </svg>
+        <span class="brand__word">permbits</span>
+        <span class="brand__tag">explained</span>
+      </div>
+      <p class="eyebrow">nine bits &middot; three octal digits &middot; one ls -l line</p>
+      <h1 class="hero__title">Unix file permissions explained &mdash; chmod, octal, <span class="nowrap">ls&nbsp;-l</span> &amp; umask</h1>
+      <p class="hero__lede">
+        <code>755</code>, <code>rwxr-xr-x</code>, <code>drwxr-sr-x+</code>, <code>umask 022</code> &mdash;
+        they're all the same nine switches wearing different clothes. Scroll to watch the switches
+        flip, then convert your own mode in the free
+        <strong>permbits</strong> calculator.
+      </p>
+
+      <div class="hero__demo" aria-hidden="true">
+        <div class="bitgrid bitgrid--hero">
+          <span class="cell on">r</span><span class="cell on">w</span><span class="cell w1001">x</span>
+          <span class="cell w1100">r</span><span class="cell off">w</span><span class="cell w1000">x</span>
+          <span class="cell w1100">r</span><span class="cell off">w</span><span class="cell w1000">x</span>
+        </div>
+        <div class="mode-rot">
+          <span class="mr mr--1"><b>755</b><i>rwxr-xr-x</i><u>web dir / script</u></span>
+          <span class="mr mr--2"><b>644</b><i>rw-r--r--</i><u>web file</u></span>
+          <span class="mr mr--3"><b>600</b><i>rw-------</i><u>SSH private key</u></span>
+          <span class="mr mr--4"><b>700</b><i>rwx------</i><u>your ~/.ssh</u></span>
+        </div>
+      </div>
+      <p class="visually-hidden">A 3-by-3 grid of permission switches — rows for owner, group and others; columns for read, write and execute — cycling through the common modes 755, 644, 600 and 700.</p>
+
+      <div class="hero__cta">
+        <a class="btn btn--primary" href="https://sreenivas-sadhu-prabhakara.github.io/permbits/">Open the permbits calculator</a>
+        <a class="btn btn--ghost" href="#problem">How it works</a>
+      </div>
+      <p class="scrollcue" aria-hidden="true"><span>scroll</span><svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 4v14m0 0l-6-6m6 6l6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></p>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- ============ 1. THE PROBLEM ============ -->
+    <section class="scene" id="problem" aria-labelledby="problemHeading">
+      <div class="scene__inner reveal">
+        <p class="scene__kicker">The problem</p>
+        <h2 class="scene__title" id="problemHeading">Permissions only come up when something is already broken.</h2>
+        <p class="scene__body">
+          Nobody studies file modes for fun. You meet them at the worst moment: a deploy script that
+          won't run, a web server throwing <strong>403 Forbidden</strong>, or SSH slamming the door on
+          the key you've used for months. The terminal answers in a code you half-remember &mdash; and
+          the top search result cheerfully suggests <code>chmod 777</code>, which &ldquo;fixes&rdquo; it
+          by handing write access to every user and process on the machine.
+        </p>
+        <div class="term" role="img" aria-label="Terminal output: ssh refuses a private key with the warning UNPROTECTED PRIVATE KEY FILE, because its permissions 0644 are too open">
+          <div class="term__bar"><span class="term__dot"></span><span class="term__dot"></span><span class="term__dot"></span><span class="term__title">terminal</span></div>
+          <pre class="term__pre"><code><span class="t-prompt">$</span> ssh -i ~/.ssh/id_ed25519 deploy@server
+<span class="t-warnband">@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@</span>
+<span class="t-warnband">@   WARNING: UNPROTECTED PRIVATE KEY FILE!      @</span>
+<span class="t-warnband">@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@</span>
+Permissions <span class="t-bad">0644</span> for '~/.ssh/id_ed25519' are too open.
+It is required that your private key files are
+<span class="t-em">NOT accessible by others</span>.</code></pre>
+        </div>
+        <p class="scene__body scene__body--after">
+          The message even names the culprit &mdash; <code>0644</code> &mdash; but only helps if you can
+          read it. That's the whole gap this page closes.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ 2. NINE SWITCHES → OCTAL ============ -->
+    <section class="scene" id="bits" aria-labelledby="bitsHeading">
+      <div class="scene__inner reveal">
+        <p class="scene__kicker">The core idea</p>
+        <h2 class="scene__title" id="bitsHeading">It's just nine switches. Each row of three is one octal digit.</h2>
+        <p class="scene__body">
+          A classic mode is a 3&times;3 grid: rows for <strong>owner</strong>, <strong>group</strong> and
+          <strong>others</strong>; columns for <strong>read</strong>, <strong>write</strong> and
+          <strong>execute</strong>. Weight the columns <code>4</code>, <code>2</code>, <code>1</code> and
+          add up each row &mdash; that sum is the digit. Three rows, three digits: a mode.
+        </p>
+
+        <ul class="octrows" id="octRows" aria-label="How each class row of rwx bits adds up to an octal digit, using 755 as the example">
+          <li class="orow" style="--i:0">
+            <span class="orow__who">Owner</span>
+            <span class="orow__bits" aria-hidden="true"><span class="cell sm on">r</span><span class="cell sm on">w</span><span class="cell sm on">x</span></span>
+            <span class="orow__math">4&nbsp;+&nbsp;2&nbsp;+&nbsp;1</span>
+            <span class="orow__digit">7</span>
+            <span class="visually-hidden">Owner: read, write and execute all set — 4 plus 2 plus 1 equals 7.</span>
+          </li>
+          <li class="orow" style="--i:1">
+            <span class="orow__who">Group</span>
+            <span class="orow__bits" aria-hidden="true"><span class="cell sm on">r</span><span class="cell sm off">w</span><span class="cell sm on">x</span></span>
+            <span class="orow__math">4&nbsp;+&nbsp;0&nbsp;+&nbsp;1</span>
+            <span class="orow__digit">5</span>
+            <span class="visually-hidden">Group: read and execute set, write withheld — 4 plus 0 plus 1 equals 5.</span>
+          </li>
+          <li class="orow" style="--i:2">
+            <span class="orow__who">Others</span>
+            <span class="orow__bits" aria-hidden="true"><span class="cell sm on">r</span><span class="cell sm off">w</span><span class="cell sm on">x</span></span>
+            <span class="orow__math">4&nbsp;+&nbsp;0&nbsp;+&nbsp;1</span>
+            <span class="orow__digit">5</span>
+            <span class="visually-hidden">Others: read and execute set, write withheld — 4 plus 0 plus 1 equals 5.</span>
+          </li>
+        </ul>
+        <p class="octrows__sum" aria-hidden="true"><span class="octrows__eq">=</span> <span class="octrows__mode">755</span> <span class="octrows__sym">rwxr-xr-x</span></p>
+        <p class="scene__note">
+          One honest wrinkle: on a <strong>directory</strong>, <code>x</code> doesn't mean
+          &ldquo;run it&rdquo; &mdash; it means <em>enter and traverse</em> it. permbits has a
+          file&nbsp;/&nbsp;directory switch precisely because the plain-English meaning changes.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ 3. LS -L ANATOMY ============ -->
+    <section class="scene" id="anatomy" aria-labelledby="anatomyHeading">
+      <div class="scene__inner reveal">
+        <p class="scene__kicker">Reading the wire format</p>
+        <h2 class="scene__title" id="anatomyHeading">An ls -l mode field, pulled apart character by character.</h2>
+        <p class="scene__body">
+          The cryptic 10-or-11 character string at the start of every <code>ls -l</code> line is the
+          same grid again, flattened &mdash; plus a type character in front and, sometimes, extra letters.
+          Here's a spicy one: a shared project directory.
+        </p>
+
+        <div class="anatomy" id="anatomyDemo">
+          <div class="anatomy__str" aria-hidden="true">
+            <span class="aseg aseg--type" style="--i:0"><span class="aseg__chars">d</span><span class="aseg__label">type:<br>directory</span></span>
+            <span class="aseg aseg--u" style="--i:1"><span class="aseg__chars">rwx</span><span class="aseg__label">owner<br>7</span></span>
+            <span class="aseg aseg--g" style="--i:2"><span class="aseg__chars">r-s</span><span class="aseg__label">group + <b>setgid</b><br>5 (+2000)</span></span>
+            <span class="aseg aseg--o" style="--i:3"><span class="aseg__chars">r-x</span><span class="aseg__label">others<br>5</span></span>
+            <span class="aseg aseg--acl" style="--i:4"><span class="aseg__chars">+</span><span class="aseg__label">ACLs<br>beyond these bits</span></span>
+          </div>
+          <p class="anatomy__verdict"><code>drwxr-sr-x+</code> &nbsp;=&nbsp; octal <strong>2755</strong>, a <strong>setgid directory</strong> &mdash; new files inside inherit the directory's group. The trailing <code>+</code> says ACLs are also in play; permbits detects it and tells you it's beyond the classic bits, never silently drops it.</p>
+          <p class="visually-hidden">The string d r w x r dash s r dash x plus splits into: d for directory; rwx for the owner, digit 7; r dash s for the group with the setgid bit, digit 5 plus the 2000 special bit; r dash x for others, digit 5; and a trailing plus meaning ACLs beyond the classic bits.</p>
+        </div>
+        <p class="scene__note">
+          Paste any such line &mdash; or a whole <code>ls -l</code> row &mdash; into permbits and it renders
+          the grid, the octal, the special bits (<code>s</code>/<code>S</code>/<code>t</code>/<code>T</code>)
+          and a plain-English sentence per class.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ 4. THE FIX ============ -->
+    <section class="scene" id="fix" aria-labelledby="fixHeading">
+      <div class="scene__inner reveal">
+        <p class="scene__kicker">Back to that SSH key</p>
+        <h2 class="scene__title" id="fixHeading">The fix is two switches. Watch <span class="nowrap">644 &rarr; 600</span>.</h2>
+        <p class="scene__body">
+          <code>0644</code> means group and others can <em>read your private key</em>. OpenSSH refuses
+          to use it until they can't. So: flip off the two read switches that don't belong to you.
+        </p>
+
+        <div class="fixdemo">
+          <figure class="fixdemo__grid">
+            <div class="bitgrid bitgrid--fix" id="fixGrid" aria-hidden="true">
+              <span class="cell on">r</span><span class="cell on">w</span><span class="cell off">x</span>
+              <span class="cell goes-off" style="--d:0">r</span><span class="cell off">w</span><span class="cell off">x</span>
+              <span class="cell goes-off" style="--d:1">r</span><span class="cell off">w</span><span class="cell off">x</span>
+            </div>
+            <figcaption class="fixdemo__cap"><span class="fixdemo__from">rw-r--r-- <b>644</b></span> <span class="fixdemo__arrow" aria-hidden="true">&rarr;</span> <span class="fixdemo__to">rw------- <b>600</b></span></figcaption>
+          </figure>
+          <div class="fixdemo__cmd">
+            <p class="fixdemo__cmdlabel">The cited recipe</p>
+            <pre class="cmd"><code>chmod 600 ~/.ssh/id_ed25519</code></pre>
+            <p class="fixdemo__why">
+              Owner keeps read + write (<code>6</code>); group and others get nothing (<code>0</code>,
+              <code>0</code>). In permbits this is one of <strong>24 hand-verified recipes</strong> &mdash;
+              each with the command, a one-line why, the upstream source quote (OpenSSH, GNU Coreutils,
+              POSIX, AWS, WordPress, sudoers) and a verified-on date. AWS <code>.pem</code> keys get the
+              stricter <code>chmod 400</code> variant.
+            </p>
+          </div>
+        </div>
+        <p class="visually-hidden">Animation: on the 644 grid, the group-read and others-read switches turn off, leaving 600 — owner read and write only.</p>
+      </div>
+    </section>
+
+    <!-- ============ 5. UMASK ============ -->
+    <section class="scene" id="umask" aria-labelledby="umaskHeading">
+      <div class="scene__inner reveal">
+        <p class="scene__kicker">Where defaults come from</p>
+        <h2 class="scene__title" id="umaskHeading">umask: the bits your system withholds from every new file.</h2>
+        <p class="scene__body">
+          New files don't get their mode by magic. The system starts from <code>666</code> for files and
+          <code>777</code> for directories, then <strong>subtracts</strong> whatever your umask lists.
+          That's the whole trick:
+        </p>
+
+        <div class="umaskmath" id="umaskMath">
+          <div class="urow" style="--i:0">
+            <span class="urow__kind">new file</span>
+            <span class="urow__calc"><code>666</code> <span class="urow__op">&amp;&nbsp;~</span> <code class="urow__mask">022</code> <span class="urow__op">=</span> <code class="urow__res">644</code></span>
+            <span class="urow__sym">rw-r--r--</span>
+          </div>
+          <div class="urow" style="--i:1">
+            <span class="urow__kind">new directory</span>
+            <span class="urow__calc"><code>777</code> <span class="urow__op">&amp;&nbsp;~</span> <code class="urow__mask">022</code> <span class="urow__op">=</span> <code class="urow__res">755</code></span>
+            <span class="urow__sym">rwxr-xr-x</span>
+          </div>
+        </div>
+        <p class="scene__note">
+          <code>022</code> withholds write from group and others &mdash; the everyday default.
+          <code>077</code> withholds <em>everything</em> from everyone but you. permbits has a umask
+          panel with the arithmetic spelled out and one-tap <code>022</code>/<code>002</code>/<code>077</code>.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ 6. PRIVACY ============ -->
+    <section class="scene scene--privacy" id="privacy" aria-labelledby="privacyHeading">
+      <div class="scene__inner reveal">
+        <p class="scene__kicker">Enforced, not promised</p>
+        <h2 class="scene__title" id="privacyHeading">Paste a production ls -l line. It cannot leave this tab.</h2>
+        <div class="privacy">
+          <div class="privacy__diagram" role="img" aria-label="Diagram: the page runs inside your browser; an outbound network request is blocked by the page's own security policy, so the internet is never reached">
+            <div class="node node--app">Your pasted mode<br><small>runs in this browser</small></div>
+            <div class="wall">
+              <span class="wall__arrow"></span>
+              <span class="wall__x">&#10005;</span>
+              <span class="wall__caption">connect&#8209;src&nbsp;'none'</span>
+            </div>
+            <div class="node node--net">The&nbsp;internet<br><small>never reached</small></div>
+          </div>
+          <p class="scene__body">
+            File listings leak real information &mdash; usernames, hostnames, project paths. Both this page
+            and the permbits calculator ship a strict Content-Security-Policy with
+            <code>connect-src 'none'</code>: the <strong>browser itself</strong> blocks every network
+            request, so privacy is enforced by the platform, not promised in a policy page. No fonts,
+            scripts, images or analytics load from anywhere else. The calculator's only storage is your
+            own browser's localStorage, for your last mode and recent recipes.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 7. FEATURE TOUR ============ -->
+    <section class="scene scene--tour" id="tour" aria-labelledby="tourHeading">
+      <div class="scene__inner reveal">
+        <p class="scene__kicker">What the calculator does</p>
+        <h2 class="scene__title" id="tourHeading">A short tour of permbits.</h2>
+        <ul class="tour">
+          <li class="feat" style="--i:0">
+            <span class="feat__mark" aria-hidden="true">&#8644;</span>
+            <h3 class="feat__title">Four-way converter</h3>
+            <p>Edit the octal, the symbolic string, the checkbox grid or the special-bit toggles — every other view updates live, with the exact <code>chmod</code> command ready to copy.</p>
+          </li>
+          <li class="feat" style="--i:1">
+            <span class="feat__mark" aria-hidden="true">&#9986;</span>
+            <h3 class="feat__title">ls -l paste parser</h3>
+            <p>Paste a full line or just the mode field. Type chars, <code>s/S/t/T</code> letters and the <code>+</code> ACL marker are all read and explained — never silently dropped.</p>
+          </li>
+          <li class="feat" style="--i:2">
+            <span class="feat__mark" aria-hidden="true">&#916;</span>
+            <h3 class="feat__title">Symbolic clause applier</h3>
+            <p>Type <code>u+x</code>, <code>go-w</code>, <code>a=rX</code> or <code>u=rw,go=</code> and see before &rarr; after with the changed slots highlighted.</p>
+          </li>
+          <li class="feat" style="--i:3">
+            <span class="feat__mark" aria-hidden="true">&#8722;</span>
+            <h3 class="feat__title">Umask panel</h3>
+            <p>Any umask, with the file (<code>666&nbsp;&amp;&nbsp;~umask</code>) and directory (<code>777&nbsp;&amp;&nbsp;~umask</code>) arithmetic spelled out. One-tap 022 / 002 / 077.</p>
+          </li>
+          <li class="feat" style="--i:4">
+            <span class="feat__mark" aria-hidden="true">&#10003;</span>
+            <h3 class="feat__title">24 cited recipes</h3>
+            <p>SSH keys, web permissions, setgid team dirs, sudoers… each with the command, why, an upstream citation and a verified-on date, plus a load-into-calculator button. Distro-variable entries are flagged <em>beta</em>.</p>
+          </li>
+          <li class="feat" style="--i:5">
+            <span class="feat__mark" aria-hidden="true">&#9888;</span>
+            <h3 class="feat__title">Plain English + warnings</h3>
+            <p>One honest sentence per class for the current mode, file-vs-directory semantics both stated, and a warning badge on risky modes like 777 or setuid + world-writable. Printing renders a one-page cheat sheet.</p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ 8. CTA ============ -->
+    <section class="scene scene--cta" id="cta" aria-labelledby="ctaHeading">
+      <div class="scene__inner reveal">
+        <div class="finalcard">
+          <div class="bitgrid bitgrid--cta" aria-hidden="true">
+            <span class="cell on">r</span><span class="cell on">w</span><span class="cell on">x</span>
+            <span class="cell on">r</span><span class="cell off">w</span><span class="cell on">x</span>
+            <span class="cell on">r</span><span class="cell off">w</span><span class="cell on">x</span>
+          </div>
+          <h2 class="finalcard__title" id="ctaHeading">Now decode the real thing.</h2>
+          <p class="finalcard__body">
+            Paste your own <code>ls -l</code> line, flip the switches, grab the cited command.
+            Free, offline, no accounts &mdash; and it tells no one what you pasted.
+          </p>
+          <a class="btn btn--primary btn--lg" href="https://sreenivas-sadhu-prabhakara.github.io/permbits/">Open the permbits calculator &rarr;</a>
+          <p class="finalcard__url">sreenivas-sadhu-prabhakara.github.io/permbits</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="foot">
+    <div class="foot__inner">
+      <p class="foot__disclaimer">
+        <strong>An explainer, not a substitute for your system's documentation.</strong>
+        The modes on this page follow the classic POSIX permission model; ACLs, SELinux/AppArmor
+        contexts, capabilities and Windows permissions are beyond these nine bits, and distributions
+        can differ in their packaged defaults. Neither this page nor permbits reads or changes real
+        files &mdash; you run the command yourself, so check <code>man chmod</code> and your distro's
+        docs before changing permissions on system files: a wrong mode on the wrong file can lock you
+        out or open a security hole. Recipe citations and verified-on dates live in the permbits app.
+        Provided under the MIT License, &ldquo;as is&rdquo;, without warranty; the author accepts no
+        liability for any loss arising from its use.
+      </p>
+      <p class="foot__meta">
+        <a href="https://sreenivas-sadhu-prabhakara.github.io/permbits/">The permbits calculator</a>
+        <span class="foot__dot">&middot;</span>
+        <span>Works 100% offline</span><span class="foot__dot">&middot;</span>
+        <span>No network, no accounts, no tracking</span><span class="foot__dot">&middot;</span>
+        <span>MIT&nbsp;License</span><span class="foot__dot">&middot;</span>
+        <span>&copy; 2026 Sreenivas&nbsp;Sadhu&nbsp;Prabhakara</span>
+      </p>
+    </div>
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>

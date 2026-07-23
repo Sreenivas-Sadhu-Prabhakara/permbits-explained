@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  /* 1200×630 OG card — the inverted bit grid (oat cells on rust) beside
+     "Unix permissions, explained". Same rust-on-oatmeal family as permbits. */
+  :root {
+    --bg: #F4EEE2; --bg2: #EDE4D2;
+    --ink: #2B2420; --soft: #5C5148;
+    --line: #D9CDB9; --rust: #A83E1C; --rust-deep: #8A3115; --clay: #C97B5A;
+    --oat: #F4EEE2;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    background: linear-gradient(150deg, #F8F2E7 0%, var(--bg) 50%, var(--bg2) 100%);
+    font-family: var(--sans); color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    position: relative;
+  }
+  .frame {
+    position: absolute; inset: 0;
+    padding: 62px 76px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 18px; }
+  .brand svg { width: 62px; height: 62px; }
+  .wordmark { font-size: 50px; font-weight: 800; letter-spacing: -0.03em; }
+  .tag {
+    font-size: 22px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+    color: #FFF6EE; background: var(--rust); border-radius: 999px; padding: 8px 22px;
+    align-self: center;
+  }
+
+  .mid { display: flex; align-items: center; gap: 66px; }
+  .plate {
+    width: 310px; height: 310px; flex: none; border-radius: 44px;
+    background: linear-gradient(150deg, #B5461F, var(--rust) 55%, var(--rust-deep));
+    box-shadow: 0 26px 50px -24px rgba(43,36,32,0.55);
+    display: grid; place-items: center;
+  }
+  .grid {
+    width: 232px; height: 232px;
+    display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .c { border-radius: 16px; background: var(--oat);
+       box-shadow: inset 0 -4px 0 rgba(43,36,32,0.14);
+       display: grid; place-items: center;
+       font-family: var(--mono); font-weight: 700; font-size: 30px; color: var(--rust-deep); }
+  .off { background: rgba(43,27,21,0.35); box-shadow: none; color: rgba(255,246,238,0.55); }
+
+  .txt h1 { font-size: 58px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; max-width: 14ch; }
+  .txt h1 .r { color: var(--rust); }
+  .modes { margin-top: 26px; display: flex; align-items: baseline; gap: 20px; font-family: var(--mono); }
+  .modes .oct { font-size: 58px; font-weight: 700; color: var(--rust); }
+  .modes .eq { font-size: 38px; color: var(--soft); }
+  .modes .sym { font-size: 42px; font-weight: 600; letter-spacing: 0.06em; }
+
+  .chips { display: flex; gap: 12px; }
+  .chip {
+    border: 2px solid var(--line); border-radius: 999px;
+    background: rgba(255,252,245,0.6);
+    padding: 12px 22px; font-size: 22px; font-weight: 650; color: var(--soft);
+  }
+  .chip .sq { display: inline-block; width: 13px; height: 13px; border-radius: 4px; background: var(--rust); margin-right: 9px; }
+  .chip.alt .sq { background: var(--clay); }
+</style>
+</head>
+<body>
+  <div class="frame">
+    <div class="brand">
+      <svg viewBox="0 0 36 36" aria-hidden="true">
+        <rect width="36" height="36" rx="8" fill="#A83E1C"/>
+        <rect x="4" y="4" width="8" height="8" rx="2" fill="#F4EEE2"/><rect x="14" y="4" width="8" height="8" rx="2" fill="#F4EEE2"/><rect x="24" y="4" width="8" height="8" rx="2" fill="#F4EEE2"/>
+        <rect x="4" y="14" width="8" height="8" rx="2" fill="#F4EEE2"/><rect x="14" y="14" width="8" height="8" rx="2" fill="#8A3115"/><rect x="24" y="14" width="8" height="8" rx="2" fill="#F4EEE2"/>
+        <rect x="4" y="24" width="8" height="8" rx="2" fill="#F4EEE2"/><rect x="14" y="24" width="8" height="8" rx="2" fill="#8A3115"/><rect x="24" y="24" width="8" height="8" rx="2" fill="#F4EEE2"/>
+      </svg>
+      <span class="wordmark">permbits</span>
+      <span class="tag">explained</span>
+    </div>
+
+    <div class="mid">
+      <div class="plate" aria-hidden="true">
+        <div class="grid">
+          <div class="c">r</div><div class="c">w</div><div class="c">x</div>
+          <div class="c">r</div><div class="c off">w</div><div class="c">x</div>
+          <div class="c">r</div><div class="c off">w</div><div class="c">x</div>
+        </div>
+      </div>
+      <div class="txt">
+        <h1>Unix permissions, <span class="r">explained</span></h1>
+        <div class="modes"><span class="oct">755</span><span class="eq">⇄</span><span class="sym">rwxr-xr-x</span></div>
+      </div>
+    </div>
+
+    <div class="chips">
+      <span class="chip"><span class="sq"></span>bits → octal</span>
+      <span class="chip alt"><span class="sq"></span>ls -l anatomy</span>
+      <span class="chip"><span class="sq"></span>umask math</span>
+      <span class="chip alt"><span class="sq"></span>animated · offline</span>
+    </div>
+  </div>
+</body>
+</html>
